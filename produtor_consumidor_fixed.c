@@ -2,8 +2,8 @@
 #include <pthread.h> 
 
 
-pthread_mutex_t count_mutex1 = PTHREAD_MUTEX_INITIALIZER;	
-pthread_mutex_t count_mutex2 = PTHREAD_MUTEX_INITIALIZER;	
+pthread_mutex_t regiao_critica = PTHREAD_MUTEX_INITIALIZER;
+
 pthread_cond_t buffer_cheio = PTHREAD_COND_INITIALIZER;
 pthread_cond_t buffer_vazio = PTHREAD_COND_INITIALIZER;
 
@@ -18,10 +18,13 @@ int buffer[TOTAL];
 void *produtor(void *argumentos){
 
 	while (1){
+		
+		pthread_mutex_lock(&regiao_critica);
 		if (posicoes_ocupadas==TOTAL){
 			printf("!!! Produtor Esperando   !!!\n");
-			pthread_cond_wait(&buffer_cheio, &count_mutex1);
+			pthread_cond_wait(&buffer_cheio, &regiao_critica);
 		}
+
 		buffer[posicoes_ocupadas] = valor;
 		printf("Valor produzido: %d\n", buffer[posicoes_ocupadas]);
 		valor++;
@@ -29,6 +32,8 @@ void *produtor(void *argumentos){
 		if (posicoes_ocupadas==1){
 			pthread_cond_signal(&buffer_vazio);
 		}
+
+		pthread_mutex_unlock(&regiao_critica);
 	}
 
 	pthread_exit(NULL);
@@ -38,16 +43,24 @@ void *consumidor(void *argumentos){
 	int leitura;
 
 	while(1){
+		
+		pthread_mutex_lock(&regiao_critica);
 		if (posicoes_ocupadas==0){
 			printf("!!!  Consumidor Esperando  !!!\n");
-			pthread_cond_wait(&buffer_vazio,&count_mutex2);
+			pthread_cond_wait(&buffer_vazio,&regiao_critica);
 		}
+
 		leitura = buffer[posicoes_ocupadas];
 		printf("Valor lido: %d\n", leitura);
 		posicoes_ocupadas--;
+
+		
 		if (posicoes_ocupadas== TOTAL-1){
 			pthread_cond_signal(&buffer_cheio);
 		}
+		pthread_mutex_unlock(&regiao_critica);
+
+		
 	}
 
 
